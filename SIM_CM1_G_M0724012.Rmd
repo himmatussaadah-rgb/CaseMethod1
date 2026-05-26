@@ -1,0 +1,831 @@
+---
+title: "Preferensi Genre Film Berdasarkan Segmentasi Pengeluaran Pelanggan"
+subtitle: "Apakah pelanggan High-Value memiliki selera genre yang berbeda? — Studi Kasus Database Sakila"
+author: "Himmatus Sa'adah — M0724012 — SIM G"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+output:
+  html_document:
+    theme: flatly
+    highlight: tango
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{css, echo=FALSE}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ── Base ─────────────────────────────────────────────── */
+body {
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  color: #2C1A0E;
+  background-color: #F5EDE0 !important;
+  line-height: 1.8;
+}
+
+/* Override flatly white containers */
+.main-container {
+  background-color: #F5EDE0 !important;
+}
+.container-fluid {
+  background-color: #F5EDE0 !important;
+}
+
+/* ── Title block ──────────────────────────────────────── */
+div.title-block {
+  margin-bottom: 2rem;
+}
+h1.title {
+  font-size: 38px !important;
+  font-weight: 700 !important;
+  line-height: 1.3;
+}
+
+.subtitle {
+  font-size: 22px !important;
+}
+h3.subtitle {
+  font-size: 1.1rem;
+  color: #7A5C44;
+  font-weight: 400;
+  margin-top: 4px;
+  margin-bottom: 10px;
+  line-height: 1.5;
+  font-style: italic;
+}
+h4.author {
+  color: #5C3A1E;
+  font-weight: 600;
+  font-size: 1rem;
+  margin-top: 12px;
+}
+h4.date {
+  color: #9C7A5C;
+  font-weight: 400;
+  font-size: 0.9rem;
+}
+h1, h2 {
+  color: #2C1A0E; font-weight: 700;
+  border-bottom: 2px solid #D8C0A8;
+  padding-bottom: 6px;
+}
+h3 { color: #5C3A1E; font-weight: 600; }
+
+/* ── Callout Boxes ─────────────────────────────────────── */
+.insight-box {
+  background: linear-gradient(135deg, #F5EDE0, #EDD9BF);
+  border-left: 5px solid #8B5E3C;
+  padding: 16px 22px; margin: 20px 0; border-radius: 0 8px 8px 0;
+}
+.finding-box {
+  background: linear-gradient(135deg, #EDF5E8, #D8EDCA);
+  border-left: 5px solid #4A7C3F;
+  padding: 16px 22px; margin: 20px 0; border-radius: 0 8px 8px 0;
+}
+.warning-box {
+  background: linear-gradient(135deg, #FEF5E8, #FDEAC8);
+  border-left: 5px solid #C07A30;
+  padding: 16px 22px; margin: 20px 0; border-radius: 0 8px 8px 0;
+}
+.danger-box {
+  background: linear-gradient(135deg, #FBF0EC, #F5DDD3);
+  border-left: 5px solid #A03030;
+  padding: 16px 22px; margin: 20px 0; border-radius: 0 8px 8px 0;
+}
+
+/* ── Tables ─────────────────────────────────────────────── */
+table {
+  width: 100%; border-collapse: collapse; font-size: 0.9rem;
+  background-color: #FAF6F1;
+}
+thead tr { background-color: #5C3A1E !important; color: white !important; }
+th { padding: 10px 13px; font-weight: 600; letter-spacing: 0.03em;
+     background-color: #5C3A1E !important; color: white !important; }
+td { padding: 8px 13px; border-bottom: 1px solid #DDD0C0; }
+tr:hover td { background-color: #F0E6D8 !important; }
+tr:nth-child(even) td { background-color: #EEE2CE; }
+
+/* ── Code ────────────────────────────────────────────────── */
+pre {
+  background: #2C1A0E !important; color: #E8D5B7 !important;
+  border-radius: 8px; padding: 14px; font-size: 0.85rem;
+}
+code { background: #F0E6D8; color: #8B5E3C;
+       padding: 2px 5px; border-radius: 3px; font-size: 0.88em; }
+
+/* ── TOC ──────────────────────────────────────────────────── */
+#TOC {
+  background: #FAF6F1 !important; border: 1px solid #DDD0C0;
+  border-radius: 10px; padding: 14px;
+}
+#TOC a { color: #5C3A1E; text-decoration: none; font-size: 0.9rem; }
+#TOC a:hover { color: #8B5E3C; }
+
+hr { border: none; border-top: 2px solid #DDD0C0; margin: 32px 0; }
+
+/* ── Hide/Show Output Button ─────────────────────────────── */
+.toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #5C3A1E;
+  color: white;
+  border: none;
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 8px;
+  letter-spacing: 0.04em;
+  transition: background 0.2s;
+}
+.toggle-btn:hover { background: #8B5E3C; }
+.toggle-btn .arrow { transition: transform 0.25s; display: inline-block; }
+.toggle-btn.collapsed .arrow { transform: rotate(-90deg); }
+
+/* ── Font Size Toolbar ───────────────────────────────────── */
+#font-toolbar {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 9999;
+  background: #FAF6F1;
+  border: 1px solid #DDD0C0;
+  border-radius: 24px;
+  padding: 6px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 2px 10px rgba(92,58,30,0.15);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: #5C3A1E;
+}
+#font-toolbar span { font-weight: 600; min-width: 28px; text-align: center; }
+#font-toolbar button {
+  background: #5C3A1E; color: white;
+  border: none; border-radius: 50%;
+  width: 22px; height: 22px;
+  cursor: pointer; font-size: 14px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  line-height: 1;
+  transition: background 0.15s;
+}
+#font-toolbar button:hover { background: #8B5E3C; }
+#font-toolbar .lbl {
+  font-size: 11px; color: #9C7A5C; font-weight: 400;
+  border-right: 1px solid #DDD0C0; padding-right: 10px;
+}
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width  = 10,
+  fig.height = 6,
+  fig.align  = "center"
+)
+```
+
+<!-- Font size toolbar & toggle script -->
+```{=html}
+<div id="font-toolbar">
+  <span class="lbl">Ukuran teks</span>
+  <button onclick="changeFontSize(-1)" title="Perkecil">−</button>
+  <span id="font-size-lbl">15px</span>
+  <button onclick="changeFontSize(1)" title="Perbesar">+</button>
+</div>
+
+<script>
+var currentSize = 15;
+function changeFontSize(delta) {
+  currentSize = Math.min(22, Math.max(11, currentSize + delta));
+  document.body.style.fontSize = currentSize + 'px';
+  document.getElementById('font-size-lbl').textContent = currentSize + 'px';
+}
+
+function toggleOutput(btn) {
+  var target = document.getElementById(btn.getAttribute('data-target'));
+  if (!target) return;
+  var hidden = target.style.display === 'none';
+  target.style.display = hidden ? '' : 'none';
+  btn.classList.toggle('collapsed', !hidden);
+  btn.querySelector('.label-txt').textContent = hidden ? '▼ Sembunyikan output' : '▶ Tampilkan output';
+}
+
+// Auto-wrap all code outputs with toggle buttons after page load
+document.addEventListener('DOMContentLoaded', function() {
+  var outputs = document.querySelectorAll('.r-output, pre:not(.r), .sourceCode ~ pre, div.kable-table, div.datatables, img.plot');
+  var idx = 0;
+  document.querySelectorAll('div.chunk-output, div[id^="output-"]').forEach(function(el) {
+    wrapOutput(el, idx++);
+  });
+});
+</script>
+```
+
+---
+
+# Pendahuluan
+
+## Deskripsi Dataset
+
+**Database Sakila** adalah contoh database relasional yang dikembangkan oleh MySQL untuk keperluan pembelajaran. Database ini mensimulasikan sistem manajemen penyewaan film (*DVD rental store*) dan terdiri dari **16 tabel** yang saling berelasi, mencakup data pelanggan, film, kategori genre, inventaris, transaksi sewa, hingga pembayaran.
+
+## Rumusan Insight Utama
+
+<div class="insight-box">
+**Pertanyaan Utama:**
+
+> *Apakah pelanggan dengan total pengeluaran tinggi (High-Value) memiliki preferensi genre film yang berbeda secara signifikan dibandingkan pelanggan dengan pengeluaran rendah (Low-Value)?*
+
+Analisis ini bertujuan untuk:
+
+1. **Segmentasi Pelanggan** — Membagi pelanggan menjadi dua segmen (High-Value & Low-Value) berdasarkan median total spending.
+2. **Pola Genre** — Mengidentifikasi genre film yang paling banyak disewa di tiap segmen.
+3. **Perbandingan Visual** — Melihat perbedaan proporsi genre antar segmen melalui berbagai visualisasi.
+4. **Validasi Statistik** — Mengonfirmasi signifikansi perbedaan preferensi genre dengan uji Chi-Square.
+5. **Rekomendasi Bisnis** — Menyusun strategi personalisasi berdasarkan temuan.
+</div>
+
+---
+
+# Persiapan Data
+
+## Memuat Library
+
+```{r libraries}
+library(RMySQL)
+library(dplyr)
+library(ggplot2)
+library(scales)
+library(knitr)
+library(kableExtra)
+library(tidyr)
+library(tibble)
+library(RColorBrewer)
+library(lubridate)
+```
+
+## Koneksi ke Database Sakila
+
+```{r koneksi}
+con <- dbConnect(
+  RMySQL::MySQL(),
+  dbname   = "sakila",
+  host     = "localhost",
+  port     = 3306,
+  user     = "root",
+  password = "himmatyasnida"
+)
+```
+
+## Pengambilan Data
+
+Dua query utama digunakan: (1) total pengeluaran per pelanggan untuk keperluan segmentasi, dan (2) frekuensi sewa per genre per pelanggan untuk analisis preferensi.
+
+```{r ambil-data}
+# Query 1: Profil pengeluaran per pelanggan
+df_spending <- dbGetQuery(con, "
+  SELECT
+    c.customer_id,
+    CONCAT(c.first_name, ' ', c.last_name) AS customer_name,
+    SUM(p.amount)      AS total_spending,
+    COUNT(r.rental_id) AS total_rental
+  FROM customer c
+  JOIN payment  p ON c.customer_id = p.customer_id
+  JOIN rental   r ON p.rental_id   = r.rental_id
+  GROUP BY c.customer_id, customer_name
+")
+
+# Query 2: Frekuensi sewa per genre per pelanggan
+df_genre <- dbGetQuery(con, "
+  SELECT
+    c.customer_id,
+    cat.name           AS genre,
+    COUNT(r.rental_id) AS rental_count
+  FROM customer      c
+  JOIN rental        r   ON c.customer_id  = r.customer_id
+  JOIN inventory     i   ON r.inventory_id = i.inventory_id
+  JOIN film          f   ON i.film_id      = f.film_id
+  JOIN film_category fc  ON f.film_id      = fc.film_id
+  JOIN category      cat ON fc.category_id = cat.category_id
+  GROUP BY c.customer_id, cat.name
+")
+```
+
+---
+
+# Analisis 1 — Segmentasi Pelanggan Berdasarkan Total Pengeluaran
+
+## Konsep & Metodologi
+
+<div class="insight-box">
+Pelanggan dibagi menjadi dua segmen menggunakan **nilai median** total pengeluaran sebagai ambang batas. Penggunaan median (bukan rata-rata) bertujuan agar segmentasi tidak terpengaruh outlier.
+
+| Segmen | Kriteria |
+|:---|:---|
+| **High-Value** | Total spending ≥ median |
+| **Low-Value** | Total spending < median |
+</div>
+
+```{r segmentasi, results='hide'}
+median_val <- median(df_spending$total_spending)
+
+df_spending <- df_spending %>%
+  mutate(segment = ifelse(total_spending >= median_val,
+                          "High-Value", "Low-Value"))
+
+seg_summary <- df_spending %>%
+  group_by(segment) %>%
+  summarise(
+    n_pelanggan     = n(),
+    rata_spending   = round(mean(total_spending), 2),
+    median_spending = round(median(total_spending), 2),
+    min_spending    = round(min(total_spending), 2),
+    max_spending    = round(max(total_spending), 2),
+    rata_rental     = round(mean(total_rental), 1),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(rata_spending))
+```
+
+## Tabel Ringkasan Segmen
+
+```{=html}
+<button class="toggle-btn" data-target="out-tabel-seg" onclick="toggleOutput(this)">
+  <span class="arrow">▼</span><span class="label-txt">Sembunyikan output</span>
+</button>
+<div id="out-tabel-seg">
+```
+
+```{r tabel-segmen}
+seg_summary %>%
+  kable(
+    col.names = c(
+      "Segmen",
+      "Jml. Pelanggan",
+      "Rata-rata",
+      "Median",
+      "Minimum",
+      "Maksimum",
+      "Rata-rata Rental"
+    ),
+    caption = "Tabel 1. Ringkasan Statistik Segmen Pelanggan",
+    format = "html",
+    escape = FALSE,
+    align = "c"
+  ) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"),
+    full_width = TRUE,
+    position = "center"
+  ) %>%
+  row_spec(0, bold = TRUE, background = "#5C3A1E", color = "white") %>%
+  row_spec(1, bold = TRUE, background = "#D8EDCA") %>%
+  row_spec(2, background = "#F5DDD3")
+```
+
+```{=html}
+</div>
+```
+
+## Distribusi Total Spending
+
+```{=html}
+<button class="toggle-btn" data-target="out-dist" onclick="toggleOutput(this)">
+  <span class="arrow">▼</span><span class="label-txt">Sembunyikan output</span>
+</button>
+<div id="out-dist">
+```
+
+```{r viz-distribusi, fig.cap="Gambar 1. Distribusi Total Spending per Segmen"}
+ggplot(df_spending, aes(x = total_spending, fill = segment)) +
+  geom_histogram(binwidth = 5, color = "white", alpha = 0.85, position = "identity") +
+  geom_vline(xintercept = median_val, linetype = "dashed",
+             color = "#A03030", linewidth = 1.1) +
+  annotate("label", x = median_val + 1, y = Inf,
+           label = paste0("Median: $", round(median_val, 2)),
+           vjust = 2, hjust = 0, fill = "#A03030", color = "white",
+           size = 3.5, fontface = "bold", label.size = 0) +
+  scale_fill_manual(values = c("High-Value" = "#4A7C3F", "Low-Value" = "#8B5E3C")) +
+  scale_x_continuous(labels = dollar_format()) +
+  labs(title    = "Distribusi Total Pengeluaran Pelanggan",
+       subtitle = "Garis putus-putus merah = nilai median sebagai batas segmentasi",
+       x = "Total Pengeluaran ($)", y = "Jumlah Pelanggan", fill = "Segmen") +
+  theme_minimal(base_size = 13) +
+  theme(plot.title       = element_text(face = "bold", size = 15),
+        plot.background  = element_rect(fill = "#FAF6F1", color = NA),
+        panel.background = element_rect(fill = "#FAF6F1", color = NA),
+        legend.position  = "top",
+        panel.grid.minor = element_blank())
+```
+
+```{=html}
+</div>
+```
+
+<div class="finding-box">
+**Temuan:** Median pengeluaran pelanggan adalah **$`r round(median_val, 2)`**. Segmen High-Value memiliki rata-rata pengeluaran lebih tinggi dengan distribusi yang lebih menyebar ke kanan.
+</div>
+
+---
+
+# Analisis 2 — Top 10 Genre per Segmen
+
+## Konsep & Metodologi
+
+<div class="insight-box">
+Setelah segmen terbentuk, data genre digabungkan untuk menghitung **proporsi penyewaan per genre** di tiap segmen. Proporsi (%) digunakan — bukan nilai absolut — agar perbandingan adil meski jumlah pelanggan berbeda.
+</div>
+
+```{r gabung-data, results='hide'}
+df_merged <- df_genre %>%
+  left_join(df_spending %>% select(customer_id, segment),
+            by = "customer_id")
+
+df_genre_seg <- df_merged %>%
+  group_by(segment, genre) %>%
+  summarise(total_rental = sum(rental_count), .groups = "drop") %>%
+  group_by(segment) %>%
+  mutate(pct = total_rental / sum(total_rental) * 100) %>%
+  ungroup()
+```
+
+```{=html}
+<button class="toggle-btn" data-target="out-top10" onclick="toggleOutput(this)">
+  <span class="arrow">▼</span><span class="label-txt">Sembunyikan output</span>
+</button>
+<div id="out-top10">
+```
+
+```{r viz-top10, fig.cap="Gambar 2. Top 10 Genre Film per Segmen Pelanggan", fig.height=8}
+top10 <- df_genre_seg %>%
+  group_by(segment) %>%
+  slice_max(order_by = pct, n = 10) %>%
+  ungroup()
+
+ggplot(top10, aes(x = reorder(genre, pct), y = pct, fill = segment)) +
+  geom_col(show.legend = FALSE, alpha = 0.9, width = 0.7) +
+  geom_text(aes(label = paste0(round(pct, 1), "%")),
+            hjust = -0.1, size = 3.3, fontface = "bold") +
+  coord_flip() +
+  facet_wrap(~segment, scales = "free_y") +
+  scale_fill_manual(values = c("High-Value" = "#4A7C3F", "Low-Value" = "#8B5E3C")) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
+  labs(title    = "Top 10 Genre Film Berdasarkan Proporsi Penyewaan",
+       subtitle = "Perbandingan antara segmen High-Value dan Low-Value",
+       x = NULL, y = "Proporsi (%)",
+       caption  = "Proporsi dihitung relatif terhadap total rental dalam segmen masing-masing") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title         = element_text(face = "bold", size = 14),
+        plot.background    = element_rect(fill = "#FAF6F1", color = NA),
+        panel.background   = element_rect(fill = "#FAF6F1", color = NA),
+        strip.text         = element_text(face = "bold", size = 12, color = "white"),
+        strip.background   = element_rect(fill = "#5C3A1E", color = NA),
+        panel.grid.major.y = element_blank())
+```
+
+```{=html}
+</div>
+```
+
+<div class="finding-box">
+**Temuan:** Distribusi genre antara kedua segmen tampak serupa pada level permukaan, namun terdapat perbedaan proporsi pada beberapa genre tertentu yang akan dieksplor lebih jauh di analisis berikutnya.
+</div>
+
+---
+
+# Analisis 3 — Heatmap Proporsi Genre × Segmen
+
+## Konsep & Metodologi
+
+<div class="insight-box">
+Heatmap memungkinkan perbandingan proporsi semua genre sekaligus. Warna lebih gelap menunjukkan proporsi lebih tinggi, memudahkan identifikasi genre yang "dominan" di tiap segmen.
+</div>
+
+```{=html}
+<button class="toggle-btn" data-target="out-heatmap" onclick="toggleOutput(this)">
+  <span class="arrow">▼</span><span class="label-txt">Sembunyikan output</span>
+</button>
+<div id="out-heatmap">
+```
+
+```{r viz-heatmap, fig.cap="Gambar 3. Heatmap Proporsi Genre per Segmen", fig.height=7}
+ggplot(df_genre_seg,
+       aes(x = segment, y = reorder(genre, pct), fill = pct)) +
+  geom_tile(color = "white", linewidth = 0.6) +
+  geom_text(aes(label = paste0(round(pct, 1), "%")),
+            size = 3.5, color = "white", fontface = "bold") +
+  scale_fill_gradient(low = "#D8C0A8", high = "#5C3A1E",
+                      name = "Proporsi (%)") +
+  labs(title    = "Heatmap Proporsi Genre Film per Segmen Pelanggan",
+       subtitle = "Warna lebih gelap = proporsi penyewaan lebih tinggi",
+       x = "Segmen Pelanggan", y = "Genre Film") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title   = element_text(face = "bold", size = 14),
+        plot.background  = element_rect(fill = "#FAF6F1", color = NA),
+        panel.background = element_rect(fill = "#FAF6F1", color = NA),
+        axis.text.x  = element_text(face = "bold", size = 11),
+        panel.grid   = element_blank())
+```
+
+```{=html}
+</div>
+```
+
+<div class="finding-box">
+**Temuan:** Heatmap memperlihatkan pola warna yang berbeda antara dua segmen untuk genre tertentu, mengindikasikan adanya perbedaan preferensi yang layak dikonfirmasi secara statistik.
+</div>
+
+---
+
+# Analisis 4 — Selisih Proporsi Genre Antar Segmen
+
+## Konsep & Metodologi
+
+<div class="insight-box">
+*Diverging bar chart* menampilkan selisih proporsi genre secara langsung:
+
+$$\text{Selisih} = \text{Proporsi}_{\text{High-Value}} - \text{Proporsi}_{\text{Low-Value}}$$
+
+- **Batang hijau (positif)** → genre lebih dominan di High-Value
+- **Batang cokelat (negatif)** → genre lebih dominan di Low-Value
+</div>
+
+```{r hitung-selisih, results='hide'}
+df_wide <- df_genre_seg %>%
+  select(segment, genre, pct) %>%
+  pivot_wider(names_from  = segment,
+              values_from = pct,
+              values_fill = 0) %>%
+  mutate(
+    selisih = `High-Value` - `Low-Value`,
+    dominan = ifelse(selisih > 0,
+                     "Lebih tinggi di High-Value",
+                     "Lebih tinggi di Low-Value")
+  )
+```
+
+```{=html}
+<button class="toggle-btn" data-target="out-selisih" onclick="toggleOutput(this)">
+  <span class="arrow">▼</span><span class="label-txt">Sembunyikan output</span>
+</button>
+<div id="out-selisih">
+```
+
+```{r viz-selisih, fig.cap="Gambar 4. Diverging Bar Chart: Selisih Proporsi Genre"}
+ggplot(df_wide,
+       aes(x = reorder(genre, selisih), y = selisih, fill = dominan)) +
+  geom_col(alpha = 0.88, width = 0.7) +
+  geom_hline(yintercept = 0, color = "#2C1A0E", linewidth = 0.8) +
+  geom_text(
+    aes(label = paste0(ifelse(selisih > 0, "+", ""), round(selisih, 2), "%"),
+        hjust = ifelse(selisih > 0, -0.1, 1.1)),
+    size = 3.2, fontface = "bold"
+  ) +
+  coord_flip() +
+  scale_fill_manual(values = c("Lebih tinggi di High-Value" = "#4A7C3F",
+                               "Lebih tinggi di Low-Value"  = "#8B5E3C")) +
+  scale_y_continuous(expand = expansion(mult = c(0.18, 0.18))) +
+  labs(title    = "Selisih Proporsi Genre: High-Value vs Low-Value",
+       subtitle = "Hijau = High-Value lebih dominan | Cokelat = Low-Value lebih dominan",
+       x = NULL, y = "Selisih Proporsi (%)", fill = NULL) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title         = element_text(face = "bold", size = 14),
+        plot.background    = element_rect(fill = "#FAF6F1", color = NA),
+        panel.background   = element_rect(fill = "#FAF6F1", color = NA),
+        legend.position    = "top",
+        panel.grid.major.y = element_blank())
+```
+
+```{=html}
+</div>
+```
+
+## Tabel Perbandingan Detail
+
+```{=html}
+<button class="toggle-btn" data-target="out-tabel-selisih" onclick="toggleOutput(this)">
+  <span class="arrow">▼</span><span class="label-txt">Sembunyikan output</span>
+</button>
+<div id="out-tabel-selisih">
+```
+
+```{r tabel-selisih}
+df_wide_disp <- df_wide %>%
+  arrange(desc(abs(selisih))) %>%
+  mutate(across(c(`High-Value`, `Low-Value`, selisih), ~round(., 2)))
+
+df_wide_disp %>%
+  kable(
+    col.names = c("Genre", "High-Value (%)", "Low-Value (%)",
+                  "Selisih (%)", "Dominan"),
+    caption   = "Tabel 2. Perbandingan Proporsi Genre (Diurutkan Selisih Terbesar)",
+    escape    = TRUE
+  ) %>%
+  kable_styling(bootstrap_options = c("striped","hover","condensed"),
+                full_width = TRUE) %>%
+  row_spec(0, bold = TRUE, background = "#5C3A1E", color = "white") %>%
+  column_spec(5,
+              background = ifelse(df_wide_disp$selisih > 0, "#D8EDCA", "#F5DDD3"),
+              bold = TRUE)
+```
+
+```{=html}
+</div>
+```
+
+<div class="finding-box">
+**Temuan:** Genre dengan selisih proporsi terbesar (posisi paling atas tabel) adalah kandidat utama untuk strategi personalisasi rekomendasi film.
+</div>
+
+---
+
+# Analisis 5 — Uji Chi-Square: Validasi Statistik
+
+## Konsep & Metodologi
+
+<div class="insight-box">
+Untuk mengonfirmasi bahwa perbedaan preferensi genre antar segmen **bukan sekadar kebetulan**, dilakukan uji independensi Chi-Square ($\chi^2$).
+
+**Hipotesis:**
+
+$$H_0: \text{Tidak ada hubungan antara segmen pengeluaran dan preferensi genre}$$
+
+$$H_1: \text{Ada hubungan signifikan antara segmen pengeluaran dan preferensi genre}$$
+
+**Tingkat signifikansi:** $\alpha = 0{,}05$
+</div>
+
+```{r chi-square, results='hide'}
+contingency_tbl <- df_merged %>%
+  group_by(genre, segment) %>%
+  summarise(total = sum(rental_count), .groups = "drop") %>%
+  pivot_wider(names_from  = segment,
+              values_from = total,
+              values_fill = 0) %>%
+  column_to_rownames("genre") %>%
+  as.matrix()
+
+chi_result <- chisq.test(contingency_tbl)
+```
+
+## Hasil Uji Chi-Square
+
+```{=html}
+<button class="toggle-btn" data-target="out-chi-tbl" onclick="toggleOutput(this)">
+  <span class="arrow">▼</span><span class="label-txt">Sembunyikan output</span>
+</button>
+<div id="out-chi-tbl">
+```
+
+```{r tabel-chi}
+data.frame(
+  Statistik = c("Chi-Square (X²)", "Degrees of Freedom (df)",
+                "p-value", "Kesimpulan (α = 0,05)"),
+  Nilai     = c(
+    round(chi_result$statistic, 4),
+    chi_result$parameter,
+    format(chi_result$p.value, scientific = TRUE),
+    ifelse(chi_result$p.value < 0.05,
+           "Tolak H0 — ada perbedaan signifikan",
+           "Gagal tolak H0 — tidak cukup bukti")
+  )
+) %>%
+  kable(col.names = c("Statistik", "Nilai"),
+        caption   = "Tabel 3. Hasil Uji Chi-Square",
+        escape    = TRUE) %>%
+  kable_styling(bootstrap_options = c("striped","hover","condensed"),
+                full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, background = "#5C3A1E", color = "white") %>%
+  row_spec(4, bold = TRUE,
+           background = ifelse(chi_result$p.value < 0.05, "#D8EDCA", "#F5DDD3"))
+```
+
+```{=html}
+</div>
+```
+
+## Peta Residual Pearson
+
+```{=html}
+<button class="toggle-btn" data-target="out-residual" onclick="toggleOutput(this)">
+  <span class="arrow">▼</span><span class="label-txt">Sembunyikan output</span>
+</button>
+<div id="out-residual">
+```
+
+```{r viz-residual, fig.cap="Gambar 5. Peta Residual Pearson (Kontribusi Chi-Square per Sel)", fig.height=7}
+resid_df <- as.data.frame(chi_result$residuals) %>%
+  rownames_to_column("genre") %>%
+  pivot_longer(-genre, names_to = "segment", values_to = "residual")
+
+ggplot(resid_df,
+       aes(x = segment, y = reorder(genre, residual), fill = residual)) +
+  geom_tile(color = "white", linewidth = 0.6) +
+  geom_text(
+    aes(label = round(residual, 2)),
+    size = 3.4, fontface = "bold",
+    color = ifelse(abs(resid_df$residual) > 1.5, "white", "#2C1A0E")
+  ) +
+  scale_fill_gradient2(low = "#A03030", mid = "#FAF6F1", high = "#3A6B2F",
+                       midpoint = 0, name = "Pearson\nResidual") +
+  labs(title    = "Peta Residual Pearson (Kontribusi Chi-Square)",
+       subtitle = "Hijau = lebih banyak dari ekspektasi | Merah = lebih sedikit dari ekspektasi",
+       x = "Segmen", y = "Genre") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title       = element_text(face = "bold", size = 14),
+        plot.background  = element_rect(fill = "#FAF6F1", color = NA),
+        panel.background = element_rect(fill = "#FAF6F1", color = NA),
+        axis.text.x      = element_text(face = "bold", size = 11),
+        panel.grid       = element_blank())
+```
+
+```{=html}
+</div>
+```
+
+<div class="finding-box">
+**Temuan — Uji Chi-Square:**
+
+- **Chi-Square** = `r round(chi_result$statistic, 4)`
+- **df** = `r chi_result$parameter`
+- **p-value** = `r format(chi_result$p.value, scientific = TRUE)`
+
+`r ifelse(chi_result$p.value < 0.05, "Karena p-value < 0,05, maka **H₀ ditolak**. Terdapat perbedaan preferensi genre yang signifikan secara statistik antara pelanggan High-Value dan Low-Value.", "Karena p-value ≥ 0,05, maka **H₀ gagal ditolak**. Tidak cukup bukti statistik untuk menyatakan adanya perbedaan preferensi genre antar segmen.")`
+
+Peta residual Pearson menunjukkan genre yang paling menyimpang dari ekspektasi — warna **hijau tua** = *over-representation*, warna **merah** = *under-representation* di segmen tersebut.
+</div>
+
+---
+
+# Interpretasi & Rekomendasi
+
+## Ringkasan Temuan
+
+<div class="insight-box">
+
+**1. Segmentasi Pelanggan**
+Pelanggan terbagi merata berdasarkan median spending ($`r round(median_val, 2)`). Perbedaan rata-rata pengeluaran antar segmen mencerminkan pola konsumsi yang berbeda secara kuantitatif.
+
+**2. Pola Preferensi Genre**
+Visualisasi top-10 genre dan diverging bar chart mengidentifikasi genre dengan perbedaan proporsi terbesar antar segmen. Genre-genre ini adalah sinyal kuat untuk personalisasi layanan.
+
+**3. Validasi Statistik**
+Uji Chi-Square mengonfirmasi bahwa perbedaan distribusi genre antar segmen `r ifelse(chi_result$p.value < 0.05, "**signifikan secara statistik**", "**tidak signifikan secara statistik**")` (p-value = `r format(chi_result$p.value, scientific = TRUE)`). Peta residual Pearson memperlihatkan genre spesifik yang menjadi pembeda utama.
+
+</div>
+
+## Rekomendasi Bisnis
+
+<div class="warning-box">
+
+**1. Personalisasi Rekomendasi**
+Gunakan profil genre dominan per segmen sebagai dasar *recommendation engine* — tampilkan genre favorit segmen saat pelanggan mengakses katalog.
+
+**2. Strategi Stok Inventaris**
+Prioritaskan ketersediaan film pada genre yang *over-represented* di segmen High-Value, karena segmen ini memberikan pendapatan lebih besar per pelanggan.
+
+**3. Promosi Silang**
+Tawarkan diskon khusus untuk genre yang *under-represented* di High-Value untuk meningkatkan variasi konsumsi pelanggan bernilai tinggi.
+
+</div>
+
+<div class="danger-box">
+**Keterbatasan Analisis:**
+
+- Segmentasi binary (High/Low) dengan median bersifat sederhana. Untuk insight lebih granular, pertimbangkan segmentasi quartile atau K-Means clustering.
+- Proporsi genre tidak memperhitungkan ketersediaan judul per genre di inventaris — genre dengan lebih banyak judul otomatis punya peluang lebih besar disewa.
+- Analisis bersifat deskriptif–inferensial; tidak menyimpulkan kausalitas antara spending dan preferensi genre.
+</div>
+
+---
+
+*Laporan dibuat menggunakan **R Markdown** dengan koneksi langsung ke database Sakila via `RMySQL`. Visualisasi menggunakan `ggplot2`; uji statistik menggunakan fungsi bawaan R.*
+
+<style>
+
+table caption {
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  color: #2b1b12 !important;
+  opacity: 1 !important;
+  margin-bottom: 10px !important;
+}
+
+.author, .date {
+  font-size: 1rem !important;
+  font-weight: 500 !important;
+  color: #2b1b12 !important;
+  opacity: 1 !important;
+}
+
+</style>
